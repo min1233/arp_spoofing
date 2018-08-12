@@ -133,7 +133,7 @@ int check_p(const u_char* packet2,struct eth_arp s_arp){
 //		if(memcmp(target->e.des_mac,"\xff\xff\xff\xff\xff\xff",6)!=-1){
 //				printf("BC\n");
 			if(target->a.sender_mac!=s_arp.a.target_mac){
-				printf("Input ARP SPOOF");
+				puts("Input ARP SPOOF");
 				return 0;
 			}
 	//	}
@@ -168,9 +168,9 @@ void *thread_main(void *arg){
 			debug(*t1);
 			printf("----------------------\n");
 			*/
+			}
 			puts("RELAY");
 			pcap_sendpacket(handle,(unsigned char *)t1,header->caplen);  //relay
-			}
 		}else{
   			pcap_sendpacket(handle,(unsigned char *)&argv.s_arp,42); //spoof
 		}
