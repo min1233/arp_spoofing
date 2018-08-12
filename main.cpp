@@ -132,7 +132,6 @@ int check_p(const u_char* packet2,struct eth_arp s_arp){
 //		if(memcmp(target->e.des_mac,"\xff\xff\xff\xff\xff\xff",6)!=-1){
 //				printf("BC\n");
 			if(target->a.sender_mac!=s_arp.a.target_mac){
-				puts("Input ARP SPOOF");
 				return 0;
 			}
 	//	}
@@ -147,7 +146,7 @@ void *thread_main(void *arg){
 	const u_char *packet2,*packet3;
 	int res;
 
-	puts("Go!");	
+	puts("ARP SPOOFING START");
 	while(true){
 		res = pcap_next_ex(handle, &header, &packet2);	
 		if (res == 0) continue;
@@ -161,10 +160,8 @@ void *thread_main(void *arg){
 				for(int i =0;i<6;i++){
   					t1->e.src_mac[i]=argv.s_arp.e.src_mac[i];
 					t1->e.des_mac[i]=argv.s_mac[i];
-					debug(*t1);
 				}
 			}
-		//	puts("RELAY");
 			pcap_sendpacket(handle,(unsigned char *)t1,header->caplen);  //relay
 		}else{
   			pcap_sendpacket(handle,(unsigned char *)&argv.s_arp,42); //spoof
@@ -245,7 +242,6 @@ int main(int argc, char* argv[]) {
   argvs.dev = dev;
   argvs.s_mac = s_mac;
   pcap_sendpacket(handle,(const u_char *)&s_arp,42);
-  puts("create");
   if(pthread_create(&t_id[j],NULL,thread_main,(void *)&argvs)!=0){
 	puts("thread Error");
 	return -1;
