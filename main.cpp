@@ -199,7 +199,7 @@ int main(int argc, char* argv[]) {
   memcpy(s_arp.a.target_mac,"\x00\x00\x00\00\x00\x00",6);
   memcpy(s_arp.a.sender_mac,s_arp.e.src_mac,6);
   s_arp.a.opcode=0x0100;
-  inet_pton(AF_INET,argv[i+3],(uint32_t*)&s_arp.a.target_ip);
+  inet_pton(AF_INET,argv[i+2],(uint32_t*)&s_arp.a.target_ip);
   pcap_sendpacket(handle,(const u_char *)&s_arp,42);
   while(true){
   	res = pcap_next_ex(handle, &header, &packet2);	
@@ -215,7 +215,7 @@ int main(int argc, char* argv[]) {
 	}
   }
   
-  inet_pton(AF_INET,argv[i+2],(uint32_t*)&s_arp.a.target_ip);
+  inet_pton(AF_INET,argv[i+3],(uint32_t*)&s_arp.a.target_ip);
   pcap_sendpacket(handle,(const u_char *)&s_arp,42);
   
   while(1){
@@ -235,8 +235,8 @@ int main(int argc, char* argv[]) {
   s_arp.a.opcode=0x0200;
   memcpy(s_arp.e.des_mac,t_mac,6);
   memcpy(s_arp.a.target_mac,t_mac,6);
-  inet_pton(AF_INET,argv[i+2],(uint32_t*)&s_arp.a.sender_ip);
-  inet_pton(AF_INET,argv[i+3],(uint32_t*)&s_arp.a.target_ip);
+  inet_pton(AF_INET,argv[i+3],(uint32_t*)&s_arp.a.sender_ip);
+  inet_pton(AF_INET,argv[i+2],(uint32_t*)&s_arp.a.target_ip);
   
   argvs.s_arp = s_arp;
   argvs.dev = dev;
