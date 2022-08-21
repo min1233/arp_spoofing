@@ -1,30 +1,8 @@
 from scapy.all import *
 
-def showPacket(packet):
-    layer = packet.payload
-    sip = ""
-    dip = ""
-
-    while layer:
-        if(layer.name=="IP"):
-            sip = layer.src
-            dip = layer.dst
-
-        if(layer.name=="TCP"):
-            print("TCP")
-            if(layer.dport==80 or layer.dport==443):
-                print(f"{sip}:{layer.sport} -> {dip}:{layer.dport}")
-                sip = ""
-                dip = ""
-        layer = layer.payload
-
-def sniffing():
-    # sniff(iface=eth0, prn-showPacket)
-    sniff(prn=showPacket)
-
 def getMac(ip):
     # sr is send and receive at L3, srp is send and receive at L2
-    ans, _ = srp(Ether(dst="ff:ff:ff:f:ff:ff")/ARP(pdst=ip), timeout=3, verbose=0)
+    ans, _ = srp(Ether(dst="ff:ff:ff:ff:ff:ff")/ARP(pdst=ip), timeout=3, verbose=0)
     if ans:
         return ans[0][1].src
 
